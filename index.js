@@ -1,50 +1,64 @@
-// index.js
-const express = require('express');
-const app = express();
+var express = require('express');
+var app = express();
 
-// Enable CORS
-const cors = require('cors');
-app.use(cors({ optionsSuccessStatus: 200 }));
+// enable CORS (https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)
+var cors = require('cors');
+app.use(cors({ optionsSuccessStatus: 200 })); // some legacy browsers choke on 204
 
-// Serve static files
+// http://expressjs.com/en/starter/static-files.html
 app.use(express.static('public'));
 
-// Homepage route
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html');
+// http://expressjs.com/en/starter/basic-routing.html
+app.get("/", function(req, res) {
+    res.sendFile(__dirname + '/views/index.html');
 });
 
-// API endpoint for handling timestamp requests
-app.get('/api/:date?', (req, res) => {
-  const { date } = req.params;
-
-  // Check for an empty date
-  if (!date) {
-    const currentDate = new Date();
-    return res.json({
-      unix: currentDate.getTime(),
-      utc: currentDate.toUTCString(),
-    });
-  }
-
-  // Attempt to parse the date using both new Date(date) and new Date(parseInt(date))
-  const parsedDate = new Date(date);
-  const parsedTimestampDate = new Date(parseInt(date));
-
-  // Check if either parsing is successful
-  if (!isNaN(parsedDate.getTime()) || !isNaN(parsedTimestampDate.getTime())) {
-    const selectedDate = !isNaN(parsedDate.getTime()) ? parsedDate : parsedTimestampDate;
-    return res.json({
-      unix: selectedDate.getTime(),
-      utc: selectedDate.toUTCString(),
-    });
-  } else {
-    // Handle invalid date
-    return res.json({ error: 'Invalid Date' });
-  }
+app.get("/api/hello", function(req, res) {
+    res.json({ greeting: 'hello API' });
 });
 
-// Start the server
-const listener = app.listen(process.env.PORT || 3000, () => {
-  console.log('Your app is listening on port ' + listener.address().port);
+// An empty date parameter
+app.get("/api/", function(req, res) {
+    const result = {
+        unix: new Date().getTime(), // Unix timestamp current time
+        utc: new Date().toGMTString(), // string of the current time
+    };
+    res.json(result);
 });
+
+// Handle dates
+app.get("/api/:date", function(req, res) {
+    console.debug("Date input: " + req.params.date);
+
+    // input date string is invalid
+    const inputDate = new Date(req.params.date);
+    if (inputDate.toString() === "Invalid Date") {
+        if (Number.isInteger(parseInt(req.params.date))) {
+            const result = {
+                unix: parseInt(req.params.date), // Unix timestamp current time
+                utc: new Date(parseInt(req.params.date)).toGMTString(), // string of the current time
+            };
+            res.json(result);
+            return;
+        }
+        console.error("Invalid input date");
+        const err = {
+            error: "Invalid Date"
+        };
+        res.json(err);
+        return;
+    }
+
+    // handle dates successfully
+    const result = {
+        unix: inputDate.getTime(), // Unix timestamp
+        utc: inputDate.toGMTString(), // string of the input date
+    };
+    res.json(result);
+});
+
+
+var listener = app.listen(process.env.PORT || 3000, function () {
+  console.log('Your app is listening on port 3000');
+});
+
